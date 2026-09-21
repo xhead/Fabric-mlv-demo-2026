@@ -5,11 +5,10 @@ does not create, update, or delete anything in the Bonnie Plants tenant.
 
 ## Contents
 
-- `data/silver/*.csv` - synthetic, representative extracts for the five demo
+- `data/silver/*.csv` - synthetic, representative extracts for four demo
   inputs: 1,000 Canadian plant varieties, every date in 2026, 5,000 Canadian
-  stores, 500,000 sales, and purchase orders.
-- `data/silver/batches/SalesBatch_0001.csv` - a 1,000-row incremental sales
-  batch for simulating activity after the initial load.
+  stores, and purchase orders. The notebook generates 50,000 synthetic sales
+  rows programmatically.
 - `sql/gold/*.sql` - gold materialized lake view definitions based on
   `BonnieLakehouse.Files/PipelineTasks/gold`.
 - `notebooks/LoadSilverAndCreateGoldMlv.Notebook/notebook-content.py` - Fabric
@@ -28,10 +27,11 @@ them with an approved export before presenting production-shaped results.
 3. Copy this folder's `sql/gold` directory to the lakehouse Files area as
    `Files/sql/gold`.
 4. Import the notebook into the new tenant/repository and run it. The default
-   run loads the initial 500,000 sales and does not append a batch.
+   run loads the initial 50,000 sales and does not append a batch.
 
-The notebook creates `silver` and `gold` schemas. It writes the five input
-tables as Delta tables and creates these MLVs:
+The notebook creates `silver` and `gold` schemas. It writes the four CSV input
+tables and generated sales data as Delta tables, enables Delta Change Data Feed
+(CDF) on every silver table, and creates these MLVs:
 
 - `gold.Date`
 - `gold.Sales`
@@ -45,18 +45,26 @@ station/route values already present in `silver.Sales` rather than requiring
 the production `silver.StoreRouteMap` dependency. These are the only
 dependency reductions needed to keep the demo to five silver inputs.
 
-## Simulating incremental sales
+## Simulating changes
 
-To append a batch after the initial load:
+To update a non-sales row and capture the update in CDF:
 
-1. Copy a batch CSV into `Files/data/silver/batches`.
-2. Set `LOAD_INITIAL_DATA = False` and set `SALES_BATCH_FILE` to the file name,
-   for example `SalesBatch_0001.csv`.
-3. Run the notebook. The batch is appended to the existing `silver.Sales`; the gold MLVs
-   are then recreated so `gold.Sales` reflects the new rows.
+1. Set `LOAD_INITIAL_DATA = False`.
+2. Set `UPDATE_ITEM_SAMPLE` to the number of random rows to update, for example
+   `UPDATE_ITEM_SAMPLE = 10`.
+3. Run the notebook. The selected `silver.Item` rows are updated and the gold
+   MLVs are recreated.
 
-Each batch must use the same columns as the initial `Sales.csv` file. The
-included batch contains 1,000 rows with non-overlapping `SalesId` values.
+To append a generated sales batch after the initial load:
+
+1. Set `LOAD_INITIAL_DATA = False`.
+2. Set `GENERATE_SALES_BATCH = True`.
+3. Run the notebook. A deterministic 1,000-row batch is appended to
+   `silver.Sales`; the gold MLVs are then recreated so `gold.Sales` reflects
+   the new rows.
+
+CDF changes can be read with Delta's `readChangeFeed` option after the
+corresponding table's CDF property has been enabled.
 
 ## Replacing the sample files
 
