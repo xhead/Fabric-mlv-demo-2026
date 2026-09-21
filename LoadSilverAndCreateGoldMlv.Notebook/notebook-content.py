@@ -8,12 +8,20 @@
 # META   },
 # META   "dependencies": {
 # META     "lakehouse": {
-# META       "default_lakehouse_name": "MLVDemoLakehouse"
+# META       "default_lakehouse": "d4b47789-20e5-4dd7-9d95-3edebb453ab7",
+# META       "default_lakehouse_name": "DemoLakehouse",
+# META       "default_lakehouse_workspace_id": "0e192b3f-2b04-42b8-9234-a6c9b74b5c92",
+# META       "known_lakehouses": [
+# META         {
+# META           "id": "d4b47789-20e5-4dd7-9d95-3edebb453ab7"
+# META         }
+# META       ]
 # META     }
 # META   }
 # META }
 
 # CELL ********************
+
 
 from pyspark.sql import DataFrame
 from pyspark.sql import functions as F
@@ -21,7 +29,7 @@ from pyspark.sql import functions as F
 
 SILVER_SCHEMA = "silver"
 GOLD_SCHEMA = "gold"
-LAKEHOUSE_FILES = "/lakehouse/default/Files"
+LAKEHOUSE_FILES = "Files"
 SILVER_DATA_ROOT = f"{LAKEHOUSE_FILES}/data/silver"
 GOLD_SQL_ROOT = f"{LAKEHOUSE_FILES}/sql/gold"
 TABLES = ("Date", "Sales", "Store", "Item", "PurchaseOrder")
@@ -83,8 +91,7 @@ def build_sales_dataframe(
     return (
         spark.range(row_count)
         .withColumnRenamed("id", "row_number")
-        .withColumn("SalesDate", F.date_add(F.lit("2026-01-01"), F.pmod(row_number, F.lit(365))))
-        .withColumn("SalesId", sales_id)
+        .withColumn("SalesDate", F.date_add(F.lit("2026-01-01"), F.pmod(row_number, F.lit(365)).cast("int")))        .withColumn("SalesId", sales_id)
         .withColumn("SeasonCode", F.lit("FY26"))
         .withColumn("ItemNumber", F.lit(100001) + F.pmod(row_number, F.lit(999)).cast("int"))
         .withColumn("StoreNumber", F.format_string("S%05d", F.pmod(row_number, F.lit(5000)) + 1))
@@ -217,7 +224,16 @@ def create_gold_mlv(view_name: str) -> None:
     display(spark.sql(f"SELECT * FROM {qualified_name} LIMIT 10"))
 
 
+
+# METADATA ********************
+
+# META {
+# META   "language": "python",
+# META   "language_group": "synapse_pyspark"
+# META }
+
 # CELL ********************
+
 
 spark.sql(f"CREATE SCHEMA IF NOT EXISTS {SILVER_SCHEMA}")
 spark.sql(f"CREATE SCHEMA IF NOT EXISTS {GOLD_SCHEMA}")
@@ -241,7 +257,15 @@ else:
         loaded[table] = spark.table(qualified_name)
 
 
+# METADATA ********************
+
+# META {
+# META   "language": "python",
+# META   "language_group": "synapse_pyspark"
+# META }
+
 # CELL ********************
+
 
 for table in TABLES:
     enable_change_data_feed(table)
@@ -258,8 +282,24 @@ if GENERATE_SALES_BATCH:
     append_generated_sales_batch()
 
 
+
+# METADATA ********************
+
+# META {
+# META   "language": "python",
+# META   "language_group": "synapse_pyspark"
+# META }
+
 # CELL ********************
+
 
 for table in TABLES:
     create_gold_mlv(table)
     print(f"Created {GOLD_SCHEMA}.{table}")
+
+# METADATA ********************
+
+# META {
+# META   "language": "python",
+# META   "language_group": "synapse_pyspark"
+# META }
