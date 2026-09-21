@@ -37,12 +37,12 @@ SALES_ROW_COUNT = 50000
 SALES_START_ID = 500001
 SALES_BATCH_ROW_COUNT = 1000
 SALES_BATCH_START_ID = 1000001
-# Set True to create a CDF update on silver.Item.
-UPDATE_ITEM_SAMPLE = True
+# Set to the number of random silver.Item rows to update.
+UPDATE_ITEM_SAMPLE = 0
 # Set True on an append-only run to add generated sales rows.
 GENERATE_SALES_BATCH = False
 # Keep True for the first run. Set False for later append-only runs.
-LOAD_INITIAL_DATA = False
+LOAD_INITIAL_DATA = True
 
 
 def load_csv_as_silver(table_name: str) -> DataFrame:
@@ -91,8 +91,7 @@ def build_sales_dataframe(
     return (
         spark.range(row_count)
         .withColumnRenamed("id", "row_number")
-        .withColumn("SalesDate", F.date_add(F.lit("2026-01-01"), F.pmod(row_number, F.lit(365)).cast("int")))
-        .withColumn("SalesId", sales_id)
+        .withColumn("SalesDate", F.date_add(F.lit("2026-01-01"), F.pmod(row_number, F.lit(365)).cast("int")))        .withColumn("SalesId", sales_id)
         .withColumn("SeasonCode", F.lit("FY26"))
         .withColumn("ItemNumber", F.lit(100001) + F.pmod(row_number, F.lit(999)).cast("int"))
         .withColumn("StoreNumber", F.format_string("S%05d", F.pmod(row_number, F.lit(5000)) + 1))
@@ -160,17 +159,42 @@ def append_generated_sales_batch(
     print(f"Appended {batch_df.count()} generated sales rows")
 
 
-def update_item_sample() -> None:
-    spark.sql(
-        f"""
-        UPDATE {SILVER_SCHEMA}.Item
-        SET
-            Item = 'Genovese Basil 0001 - Updated',
-            LastUpdated = CAST('2026-09-20T12:00:00' AS TIMESTAMP)
-        WHERE ItemNumber = 100001
-        """
-    )
-    print("Updated silver.Item row for ItemNumber 100001")
+def update_item_sample(row_count: int) -> None:
+    if row_count < 0:
+        raise ValueError("row_count must be zero or greater")
+    if row_count == 0:
+        print("No silver.Item rows selected for update")
+        return
+
+    item_table = f"{SILVER_SCHEMA}.Item"
+    item_keys = spark.table(item_table).select("ItemNumber")
+    available_count = item_keys.count()
+    if row_count > available_count:
+        raise ValueError(
+            f"Cannot update {row_count} rows; {item_table} contains "
+            f"only {available_count} rows"
+        )
+
+    selected_keys = item_keys.orderBy(F.rand()).limit(row_count)
+    selected_keys.createOrReplaceTempView("item_update_keys")
+    try:
+        spark.sql(
+            f"""
+            MERGE INTO {item_table} AS target
+            USING item_update_keys AS source
+            ON target.ItemNumber = source.ItemNumber
+            WHEN MATCHED THEN UPDATE SET
+                target.Item = CONCAT(
+                    REGEXP_REPLACE(target.Item, ' - Updated$', ''),
+                    ' - Updated'
+                ),
+                target.LastUpdated = CURRENT_TIMESTAMP()
+            """
+        )
+    finally:
+        spark.catalog.dropTempView("item_update_keys")
+
+    print(f"Updated {row_count} random rows in {item_table}")
 
 
 def read_gold_sql(view_name: str) -> str:
@@ -247,7 +271,7 @@ for table in TABLES:
     enable_change_data_feed(table)
 
 if UPDATE_ITEM_SAMPLE:
-    update_item_sample()
+    update_item_sample(UPDATE_ITEM_SAMPLE)
 
 if GENERATE_SALES_BATCH:
     if LOAD_INITIAL_DATA:

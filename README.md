@@ -1,4 +1,4 @@
-# Bonnie Plants MLV demo
+# Fabric MLV demo
 
 This folder is a Git-ready demo for a separate Fabric tenant and lakehouse. It
 does not create, update, or delete anything in the Bonnie Plants tenant.
@@ -11,7 +11,7 @@ does not create, update, or delete anything in the Bonnie Plants tenant.
   rows programmatically.
 - `sql/gold/*.sql` - gold materialized lake view definitions based on
   `BonnieLakehouse.Files/PipelineTasks/gold`.
-- `notebooks/LoadSilverAndCreateGoldMlv.Notebook/notebook-content.py` - Fabric
+- `LoadSilverAndCreateGoldMlv.Notebook/notebook-content.py` - Fabric
   PySpark notebook that loads the CSV files into silver Delta tables and
   creates/replaces the gold MLVs.
 
@@ -26,7 +26,8 @@ them with an approved export before presenting production-shaped results.
    `Files/data/silver`.
 3. Copy this folder's `sql/gold` directory to the lakehouse Files area as
    `Files/sql/gold`.
-4. Import the notebook into the new tenant/repository and run it. The default
+4. Import the notebook from `LoadSilverAndCreateGoldMlv.Notebook` into the new
+   tenant/repository and run it. The default
    run loads the initial 50,000 sales and does not append a batch.
 
 The notebook creates `silver` and `gold` schemas. It writes the four CSV input
@@ -38,12 +39,6 @@ tables and generated sales data as Delta tables, enables Delta Change Data Feed
 - `gold.Store`
 - `gold.Item`
 - `gold.PurchaseOrder`
-
-The demo's `Date` definition reads `silver.Date` rather than the production
-`reference.BonnieCalendar`, and the demo's `Sales` definition uses the
-station/route values already present in `silver.Sales` rather than requiring
-the production `silver.StoreRouteMap` dependency. These are the only
-dependency reductions needed to keep the demo to five silver inputs.
 
 ## Simulating changes
 
