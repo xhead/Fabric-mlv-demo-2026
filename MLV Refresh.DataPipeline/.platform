@@ -1,0 +1,11 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/gitIntegration/platformProperties/2.0.0/schema.json",
+  "metadata": {
+    "type": "DataPipeline",
+    "displayName": "MLV Refresh"
+  },
+  "config": {
+    "version": "2.0",
+    "logicalId": "deb9d674-6e2c-b36b-4e52-c3fa89c22847"
+  }
+}

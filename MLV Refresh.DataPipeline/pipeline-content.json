@@ -1,0 +1,25 @@
+{
+  "properties": {
+    "activities": [
+      {
+        "type": "RefreshMaterializedLakeView",
+        "typeProperties": {
+          "workspaceId": "00000000-0000-0000-0000-000000000000",
+          "lakehouseId": "bb453ab7-3ede-9d95-4dd7-20e5d4b47789"
+        },
+        "externalReferences": {
+          "connection": "c3d619b1-d1c0-4ba6-ad01-36f6986bbd52"
+        },
+        "policy": {
+          "timeout": "0.12:00:00",
+          "retry": 0,
+          "retryIntervalInSeconds": 30,
+          "secureInput": false,
+          "secureOutput": false
+        },
+        "name": "Refresh Materialized Lake View1",
+        "dependsOn": []
+      }
+    ]
+  }
+}
